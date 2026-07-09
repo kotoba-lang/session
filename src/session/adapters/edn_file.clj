@@ -1,0 +1,32 @@
+(ns session.adapters.edn-file
+  (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
+            [session.adapters.store :as store]))
+
+(defn- read-state [file]
+  (if (.exists (io/file file))
+    (edn/read-string (slurp file))
+    {}))
+
+(defn- write-state! [file state]
+  (let [f (io/file file)]
+    (when-let [parent (.getParentFile f)]
+      (.mkdirs parent))
+    (spit f (pr-str state))
+    state))
+
+(defn edn-key-value-store [file]
+  (let [lock (Object.)]
+    (reify store/IKeyValueStore
+      (put! [_ key value _opts]
+        (locking lock
+          (write-state! file (assoc (read-state file) key value)))
+        value)
+      (get! [_ key _opts]
+        (locking lock
+          (get (read-state file) key)))
+      (append! [_ key value _opts]
+        (locking lock
+          (let [next-state (update (read-state file) key (fnil conj []) value)]
+            (write-state! file next-state)
+            (get next-state key)))))))
