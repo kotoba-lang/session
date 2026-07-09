@@ -53,6 +53,39 @@
                                {:idle-expires-at "2026-07-01T00:10:00Z"}))))
     (is (= [:expired] (mapv :session.event/type (p/events-for store "s6"))))))
 
+(deftest expires-session-past-absolute-expires-at-on-touch
+  ;; touch! must not keep extending :session/last-seen-at (and leaving
+  ;; :status :active) once the session's own absolute :session/expires-at
+  ;; has passed -- active? already reports this session as expired, so
+  ;; touch! must agree, not silently disagree with it forever.
+  (let [store (p/memory-session-store)
+        s (m/session "s10" "did:web:example.com:alice"
+                     {:expires-at "2026-01-01T00:00:00Z" :last-seen-at "2026-01-01T00:00:00Z"})]
+    (c/create! store s)
+    (is (false? (c/active? s "2026-07-07T00:00:00Z")))
+    (let [touched (c/touch! store "s10" {} "2026-07-07T00:00:00Z" {})]
+      (is (= :expired (:session/status touched)))
+      (is (= [:expired] (mapv :session.event/type (p/events-for store "s10")))))))
+
+(deftest touch-still-succeeds-before-absolute-expires-at
+  (let [store (p/memory-session-store)
+        s (m/session "s11" "did:web:example.com:alice"
+                     {:expires-at "2030-01-01T00:00:00Z" :last-seen-at "2026-01-01T00:00:00Z"})]
+    (c/create! store s)
+    (is (= :active (:session/status (c/touch! store "s11" {} "2026-06-01T00:00:00Z" {}))))))
+
+(deftest enforce-concurrency-does-not-count-an-absolute-expired-session
+  ;; A session past its :session/expires-at that was never touched still
+  ;; sits in storage with :status :active -- enforce-concurrency! must not
+  ;; count it toward the limit or revoke a fresh session to make room for it.
+  (let [store (p/memory-session-store)
+        subject "did:web:example.com:bob"]
+    (c/create! store (m/session "s12" subject {:expires-at "2020-01-01T00:00:00Z"
+                                               :created-at "2019-01-01T00:00:00Z"}))
+    (c/create! store (m/session "s13" subject {:created-at "2026-01-01T00:00:00Z"}))
+    (is (= [] (c/enforce-concurrency! store subject 1 "2026-07-07T00:00:00Z")))
+    (is (= :active (:session/status (p/get-session store "s13"))))))
+
 (deftest enforces-concurrent-session-limit
   (let [store (p/memory-session-store)
         subject "did:web:example.com:alice"]

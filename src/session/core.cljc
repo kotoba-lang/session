@@ -75,14 +75,29 @@
     (when-not s
       (throw (ex-info "session not found" {:session/id session-id})))
     (valid-binding! s request)
-    (let [idle-expires-at (:idle-expires-at opts)]
-      (if (and idle-expires-at
-               (:session/last-seen-at s)
-               (not (neg? (compare (str at) (str idle-expires-at)))))
+    (let [idle-expires-at (:idle-expires-at opts)
+          ;; absolute :session/expires-at -- same comparison active? uses,
+          ;; so touch! can't silently keep extending a session active? has
+          ;; already declared expired.
+          absolute-expired? (and (:session/expires-at s)
+                                  (not (neg? (compare (str at) (str (:session/expires-at s))))))
+          idle-expired? (and idle-expires-at
+                             (:session/last-seen-at s)
+                             (not (neg? (compare (str at) (str idle-expires-at)))))]
+      (cond
+        absolute-expired?
+        (let [[next event] (expire s :absolute-timeout at)]
+          (p/put-session! store next)
+          (p/put-event! store event)
+          next)
+
+        idle-expired?
         (let [[next event] (expire s :idle-timeout at)]
           (p/put-session! store next)
           (p/put-event! store event)
           next)
+
+        :else
         (let [next (assoc s :session/last-seen-at at)
               event (m/event s :touched {:at at})]
           (p/put-session! store next)
@@ -112,7 +127,7 @@
   (when-not (satisfies? p/ISessionIndex store)
     (throw (ex-info "session index not available" {:subject subject})))
   (let [active-sessions (->> (p/sessions-for-subject store subject)
-                             (filter #(= :active (:session/status %)))
+                             (filter #(active? % at))
                              (sort-by #(or (:session/created-at %) "")))
         excess (max 0 (- (count active-sessions) max-active))
         to-revoke (take excess active-sessions)]
