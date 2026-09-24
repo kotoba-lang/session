@@ -1,5 +1,5 @@
 (ns session.adapters.datomic-kotoba-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [kotoba.test :refer [deftest is]]
             [session.adapters.datomic-kotoba :as dk]
             [session.core :as c]
             [session.model :as m]

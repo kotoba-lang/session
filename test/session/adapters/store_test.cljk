@@ -1,5 +1,5 @@
 (ns session.adapters.store-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [kotoba.test :refer [deftest is]]
             [session.adapters.store :as a]
             [session.core :as c]
             [session.model :as m]
