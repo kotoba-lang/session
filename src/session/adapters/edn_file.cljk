@@ -1,17 +1,17 @@
 (ns session.adapters.edn-file
   (:require [kotoba.lang.edn :as edn]
-            [clojure.java.io :as io]
+            [kotoba.io :as io]
             [session.adapters.store :as store]))
 
 (defn- read-state [file]
-  (if (.exists (io/file file))
+  (if (io/exists? (io/file file))
     (edn/read-string (slurp file))
     {}))
 
 (defn- write-state! [file state]
   (let [f (io/file file)]
-    (when-let [parent (.getParentFile f)]
-      (.mkdirs parent))
+    (when-let [parent (io/parent-file f)]
+      (io/mkdirs parent))
     (spit f (pr-str state))
     state))
 
