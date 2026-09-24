@@ -1,5 +1,5 @@
 (ns session.adapters.edn-file
-  (:require [clojure.edn :as edn]
+  (:require [kotoba.lang.edn :as edn]
             [clojure.java.io :as io]
             [session.adapters.store :as store]))
 
