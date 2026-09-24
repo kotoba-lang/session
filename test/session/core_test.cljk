@@ -1,5 +1,5 @@
 (ns session.core-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [kotoba.test :refer [deftest is]]
             [session.core :as c]
             [session.model :as m]
             [session.ports :as p]))

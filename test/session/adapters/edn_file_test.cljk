@@ -1,5 +1,5 @@
 (ns session.adapters.edn-file-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [kotoba.test :refer [deftest is]]
             [session.adapters.edn-file :as edn-file]
             [session.adapters.store :as store]
             [session.core :as c]

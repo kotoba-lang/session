@@ -1,5 +1,5 @@
 (ns session.adapters.datomic-kotoba-cluster-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [kotoba.test :refer [deftest is]]
             [session.adapters.datomic-kotoba-cluster :as c]))
 
 (deftest installs-schema-and-exports-tx-audit
